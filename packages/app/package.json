@@ -7,9 +7,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "rm -rf dist && esbuild index.ts --bundle --sourcemap --platform=node --target=es2020 --outdir=dist",
     "zip": "zip -r ./dist/app.zip ./dist/index.js ./node_modules",
-    "b2": "esbuild index.ts --bundle --platform=node --target=node14 --outdir=dist",
+    "b2": "rm -rf dist && esbuild index.ts --bundle --platform=node --target=node14 --outdir=dist",
     "z2": "zip -r ./dist/app.zip ./dist/index.js",
-    "z": "zip -r ./dist/app.zip ./index.js ./node_modules"
+    "z": "zip -r ./dist/app.zip ./index.js ./node_modules",
+    "b3": "rm -rf dist && esbuild index.ts --bundle --platform=node --target=node14 --format=cjs --outfile=dist/index.js"
   },
   "keywords": [],
   "author": "",
