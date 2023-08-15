@@ -36,6 +36,7 @@ export class CloudStack extends cdk.Stack {
 
     const apiGateway = new apigateway.LambdaRestApi(this, "RaRestApi", {
       handler: lambdaFunction,
+      proxy: true,
     });
   }
 }

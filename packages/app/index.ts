@@ -79,14 +79,13 @@ export const handler = async (
       title,
       loadWithDOM,
       all,
-      // profile,
+      profile,
     };
+
     return {
       statusCode: 200,
-      headers: { "Content-Type": "text/plain" },
-      body: {
-        result,
-      },
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(result),
     };
   } catch (error: unknown) {
     if (error instanceof Error) {
