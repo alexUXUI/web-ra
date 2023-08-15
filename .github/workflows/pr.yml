@@ -1,0 +1,24 @@
+name: RA Workflow CI
+
+on: pull_request
+
+jobs:
+  Parse_Commit:
+    runs-on: ubuntu-latest
+    outputs:
+      commits: ${{ steps.parse.outputs.commits }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Parse commits
+        id: parse
+        run: |
+          echo "::set-output name=commits::$(git log --pretty=tformat:"%s" --no-merges)"
+
+  Test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Custom
+        uses: ./.github/actions/ra
+        with:
+          milliseconds: 1000
