@@ -1,5 +1,6 @@
 import * as github from '@actions/github'
 import * as core from '@actions/core'
+import axios from 'axios'
 import {wait} from './wait'
 
 import * as Octokit from '@octokit/rest'
@@ -20,13 +21,16 @@ async function run(): Promise<void> {
     // make a GET request to this URL https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/
     // and set the response body as the output
 
-    const response = await fetch(
-      'https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/'
-    )
-    const body = await response.text()
-
-    core.setOutput('response', body)
-    core.setSecret(body)
+    axios
+      .get('https://api.example.com/data')
+      .then(response => {
+        console.log(response.data)
+        core.setOutput('response', response.data)
+        core.setSecret(response.data)
+      })
+      .catch(error => {
+        console.error('Error:', error)
+      })
 
     // post the body as a comment on the PR
     const commentBody = `Example PR comment`
