@@ -1,9 +1,14 @@
 import chromium from "chrome-aws-lambda";
 import type { APIGatewayEvent, Context, Callback } from "aws-lambda";
-import type { Browser, Page } from "puppeteer-core";
+import type { Browser, Page, Protocol } from "puppeteer-core";
 
 interface RaEvent extends APIGatewayEvent {
   url: string;
+}
+
+interface RaResult {
+  title: string;
+  profile: Protocol.Profiler.TakePreciseCoverageResponse;
 }
 
 export const handler = async (
@@ -11,7 +16,7 @@ export const handler = async (
   context: Context,
   callback: Callback
 ) => {
-  let result: any = null;
+  let result: RaResult | null = null;
   let browser: Browser | null = null;
   try {
     // Launch headless Chrome via
@@ -33,10 +38,8 @@ export const handler = async (
     const client = await page.target().createCDPSession();
 
     // Enable CDP domains
-    await client.send("Network.enable");
     await client.send("Page.enable");
     await client.send("Profiler.enable");
-    await client.send("Debugger.enable");
 
     await client.send("Page.setWebLifecycleState", {
       state: "active",
@@ -59,26 +62,17 @@ export const handler = async (
       console.log("Page loaded");
     });
 
-    const profile = await client.send("Profiler.takePreciseCoverage");
-
-    // compress profile into smaller object
+    const profile: Protocol.Profiler.TakePreciseCoverageResponse =
+      await client.send("Profiler.takePreciseCoverage");
 
     const performanceTiming = JSON.parse(
       await page.evaluate(() => JSON.stringify(window.performance.timing))
     );
 
-    const loadWithDOM =
-      performanceTiming.domComplete - performanceTiming.navigationStart;
-
-    const all =
-      performanceTiming.loadEventEnd - performanceTiming.navigationStart;
-
     const title = await page.title();
 
     result = {
       title,
-      loadWithDOM,
-      all,
       profile,
     };
 
