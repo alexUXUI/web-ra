@@ -4,13 +4,6 @@ import axios from 'axios'
 import {wait} from './wait'
 
 import * as Octokit from '@octokit/rest'
-const githubToken = process.env.GITHUB_TOKEN
-const octokit = new Octokit.Octokit({
-  auth: githubToken,
-  request: {
-    fetch: axios
-  }
-})
 
 async function run(): Promise<void> {
   try {
@@ -42,7 +35,15 @@ async function run(): Promise<void> {
     core.info(`Message: ${message}`)
     core.info(`Context: ${JSON.stringify(context)}`)
 
-    const new_comment = octokit.issues.createComment({
+    const githubToken = process.env.GITHUB_TOKEN
+    const octokit = new Octokit.Octokit({
+      auth: githubToken,
+      request: {
+        fetch: axios
+      }
+    })
+
+    const new_comment = octokit.rest.issues.createComment({
       ...context.repo,
       issue_number: pull_request_number,
       body: message
