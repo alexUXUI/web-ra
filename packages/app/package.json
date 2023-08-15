@@ -6,13 +6,17 @@
   "scripts": {
     "prebuild": "rm -rf dist",
     "build": "esbuild index.ts --target=node14 --format=cjs --platform=node --outfile=index.js",
-    "postbuild": "zip -r app.zip index.js node_modules && mkdir dist && cp app.zip dist/app.zip"
+    "postbuild": "zip -r app.zip index.js node_modules && mkdir dist && cp app.zip dist/app.zip && rm app.zip && rm index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "aws-lambda": "^1.0.7",
     "chrome-aws-lambda": "^10.1.0",
     "puppeteer-core": "^10.4.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.119"
   }
 }

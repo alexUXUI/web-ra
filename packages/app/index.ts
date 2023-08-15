@@ -1,18 +1,33 @@
+import type { Browser, Page } from "puppeteer-core";
+
 const chromium = require("chrome-aws-lambda");
 
-export const handler = async (event: any, context: any, callback: Function) => {
+import { APIGatewayEvent, Context, Callback } from "aws-lambda";
+
+interface RaEvent extends APIGatewayEvent {
+  url: string;
+}
+
+export const handler = async (
+  event: RaEvent,
+  context: Context,
+  callback: Callback
+) => {
   let result: any = null;
-  let browser: any = null;
+  let browser: Browser | null = null;
   try {
     browser = await chromium.puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
       executablePath: await chromium.executablePath,
       ignoreHTTPSErrors: true,
-      //   createCDPSession: true,
     });
 
-    const page = await browser.newPage();
+    if (browser === null) {
+      throw new Error("Browser is null");
+    }
+
+    const page: Page = await browser.newPage();
     const client = await page.target().createCDPSession();
     await client.send("Network.enable");
 
@@ -55,10 +70,15 @@ export const handler = async (event: any, context: any, callback: Function) => {
     const title = await page.title();
     result = {
       // content,
-      title: `FO REAL: ${title}`,
+      title: `FO REAL CANT BELIEVE: ${title}`,
+      loadWithDOM,
+      all,
     };
-  } catch (error) {
-    return callback(error);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      console.error(error);
+      return callback(error);
+    }
   } finally {
     if (browser !== null) {
       await browser.close();
