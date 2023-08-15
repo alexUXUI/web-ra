@@ -24,21 +24,37 @@ async function run(): Promise<void> {
     const res = await axios.get(
       'https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/'
     )
-    core.debug('YOOOOOO')
-    core.debug(res.data)
-    core.setOutput('response', res.data)
-    core.setSecret(res.data)
+    // core.debug('YOOOOOO')
+    // core.debug(res.data)
+    // core.setOutput('response', res.data)
+    // core.setSecret(res.data)
 
-    // post the body as a comment on the PR
-    const commentBody = `Example PR comment`
+    // // post the body as a comment on the PR
+    // const commentBody = `Example PR comment`
 
-    // POST the comment to the PR using the GitHub API.
-    createComment(
-      github.context.repo.owner,
-      github.context.repo.repo,
-      github.context.issue.number,
-      commentBody
-    )
+    // // POST the comment to the PR using the GitHub API.
+    // createComment(
+    //   github.context.repo.owner,
+    //   github.context.repo.repo,
+    //   github.context.issue.number,
+    //   commentBody
+    // )
+
+    const message = 'Sample PR comment'
+    const github_token = core.getInput('GITHUB_TOKEN')
+
+    const context = github.context
+    if (context.payload.pull_request == null) {
+      core.setFailed('No pull request found.')
+      return
+    }
+    const pull_request_number = context.payload.pull_request.number
+
+    const new_comment = octokit.issues.createComment({
+      ...context.repo,
+      issue_number: pull_request_number,
+      body: message
+    })
 
     return
   } catch (error) {
@@ -50,21 +66,21 @@ async function run(): Promise<void> {
 
 run()
 
-const createComment = async (
-  owner: string,
-  repo: string,
-  issueNumber: number,
-  comment: string
-): Promise<void> => {
-  try {
-    await octokit.issues.createComment({
-      owner,
-      repo,
-      issue_number: issueNumber,
-      body: comment
-    })
-    return
-  } catch (error) {
-    return
-  }
-}
+// const createComment = async (
+//   owner: string,
+//   repo: string,
+//   issueNumber: number,
+//   comment: string
+// ): Promise<void> => {
+//   try {
+//     await octokit.issues.createComment({
+//       owner,
+//       repo,
+//       issue_number: issueNumber,
+//       body: comment
+//     })
+//     return
+//   } catch (error) {
+//     return
+//   }
+// }
