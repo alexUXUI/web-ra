@@ -9,7 +9,7 @@ jobs:
       commits: ${{ steps.parse.outputs.commits }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Parse commits
         id: parse
         run: |
@@ -18,6 +18,8 @@ jobs:
   Test:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
       - name: Custom
         uses: ./.github/actions/ra
         with:

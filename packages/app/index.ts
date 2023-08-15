@@ -46,7 +46,6 @@ export const handler = async (
 
     const url = event.url;
 
-    // start precise code coverage
     await client.send("Profiler.startPreciseCoverage", {
       callCount: true,
       detailed: true,
