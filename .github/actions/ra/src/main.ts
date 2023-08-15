@@ -29,6 +29,15 @@ async function run(): Promise<void> {
     const res = await axios.get(
       'https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/'
     )
+
+    // output the response body
+    core.debug('YOOOOOO')
+    core.debug(res.data)
+    core.setOutput('response', res.data)
+    core.setSecret(res.data)
+    core.info('YOOOOOO')
+    core.info(res.data)
+
     // core.debug('YOOOOOO')
     // core.debug(res.data)
     // core.setOutput('response', res.data)
@@ -45,21 +54,21 @@ async function run(): Promise<void> {
     //   commentBody
     // )
 
-    const message = 'Sample PR comment'
-    const github_token = core.getInput('GITHUB_TOKEN')
+    // const message = 'Sample PR comment'
+    // const github_token = core.getInput('GITHUB_TOKEN')
 
-    const context = github.context
-    if (context.payload.pull_request == null) {
-      core.setFailed('No pull request found.')
-      return
-    }
-    const pull_request_number = context.payload.pull_request.number
+    // const context = github.context
+    // if (context.payload.pull_request == null) {
+    //   core.setFailed('No pull request found.')
+    //   return
+    // }
+    // const pull_request_number = context.payload.pull_request.number
 
-    const new_comment = octokit.issues.createComment({
-      ...context.repo,
-      issue_number: pull_request_number,
-      body: message
-    })
+    // const new_comment = octokit.issues.createComment({
+    //   ...context.repo,
+    //   issue_number: pull_request_number,
+    //   body: message
+    // })
 
     return
   } catch (error) {
