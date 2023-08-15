@@ -1,4 +1,4 @@
-import * as chromium from "chrome-aws-lambda";
+const chromium = require("chrome-aws-lambda");
 
 export const handler = async (event: any, context: any, callback: Function) => {
   let result: any = null;
@@ -51,11 +51,11 @@ export const handler = async (event: any, context: any, callback: Function) => {
     );
     console.log("All Load for Regular2G --", all / 1000, "sec");
 
-    const content = await page.content();
+    // const content = await page.content();
     const title = await page.title();
     result = {
-      content,
-      title,
+      // content,
+      title: `FO REAL: ${title}`,
     };
   } catch (error) {
     return callback(error);

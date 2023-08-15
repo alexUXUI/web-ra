@@ -4,13 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "rm -rf dist && esbuild index.ts --bundle --sourcemap --platform=node --target=es2020 --outdir=dist",
-    "zip": "zip -r ./dist/app.zip ./dist/index.js ./node_modules",
-    "b2": "rm -rf dist && esbuild index.ts --bundle --platform=node --target=node14 --outdir=dist",
-    "z2": "zip -r ./dist/app.zip ./dist/index.js",
-    "z": "zip -r ./dist/app.zip ./index.js ./node_modules",
-    "b3": "rm -rf dist && esbuild index.ts --bundle --platform=node --target=node14 --format=cjs --outfile=dist/index.js"
+    "prebuild": "rm -rf dist",
+    "build": "esbuild index.ts --target=node14 --format=cjs --platform=node --outfile=index.js",
+    "postbuild": "zip -r app.zip index.js node_modules && mkdir dist && cp app.zip dist/app.zip"
   },
   "keywords": [],
   "author": "",

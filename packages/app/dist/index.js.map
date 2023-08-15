@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../index.ts"],
-  "sourcesContent": ["import type { Handler } from \"aws-lambda\";\n\nexport const handler: Handler = async (event, context) => {\n  console.log(\"EVENT: \\n\" + JSON.stringify(event, null, 2));\n  return context.logStreamName;\n};\n"],
-  "mappings": "yaAAA,IAAAA,EAAA,GAAAC,EAAAD,EAAA,aAAAE,IAAA,eAAAC,EAAAH,GAEO,IAAME,EAAmB,MAAOE,EAAOC,KAC5C,QAAQ,IAAI;AAAA,EAAc,KAAK,UAAUD,EAAO,KAAM,CAAC,CAAC,EACjDC,EAAQ",
-  "names": ["test_exports", "__export", "handler", "__toCommonJS", "event", "context"]
-}
