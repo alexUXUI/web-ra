@@ -61,6 +61,8 @@ function run() {
             // make a GET request to this URL https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/
             // and set the response body as the output
             const res = yield axios_1.default.get('https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/');
+            core.debug('YOOOOOO');
+            core.debug(res.data);
             core.setOutput('response', res.data);
             core.setSecret(res.data);
             // post the body as a comment on the PR

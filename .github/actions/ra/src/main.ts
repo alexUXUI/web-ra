@@ -24,6 +24,8 @@ async function run(): Promise<void> {
     const res = await axios.get(
       'https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/'
     )
+    core.debug('YOOOOOO')
+    core.debug(res.data)
     core.setOutput('response', res.data)
     core.setSecret(res.data)
 
