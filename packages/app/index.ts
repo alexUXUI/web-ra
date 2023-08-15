@@ -1,8 +1,6 @@
+import chromium from "chrome-aws-lambda";
+import type { APIGatewayEvent, Context, Callback } from "aws-lambda";
 import type { Browser, Page } from "puppeteer-core";
-
-const chromium = require("chrome-aws-lambda");
-
-import { APIGatewayEvent, Context, Callback } from "aws-lambda";
 
 interface RaEvent extends APIGatewayEvent {
   url: string;
@@ -30,8 +28,13 @@ export const handler = async (
     const page: Page = await browser.newPage();
     const client = await page.target().createCDPSession();
     await client.send("Network.enable");
-
     await client.send("Page.enable");
+
+    // enable the Profiler
+    await client.send("Profiler.enable");
+
+    // enable the Debugger
+    await client.send("Debugger.enable");
 
     await client.send("Page.setWebLifecycleState", {
       state: "active",
@@ -43,11 +46,19 @@ export const handler = async (
 
     const url = event.url;
 
+    // start precise code coverage
+    await client.send("Profiler.startPreciseCoverage", {
+      callCount: true,
+      detailed: true,
+    });
+
     await page.goto(url ?? "https://boggle.pages.dev/");
 
     await client.on("Page.loadEventFired", () => {
       console.log("Page loaded");
     });
+
+    const profile = await client.send("Profiler.takePreciseCoverage");
 
     const performanceTiming = JSON.parse(
       await page.evaluate(() => JSON.stringify(window.performance.timing))
@@ -64,15 +75,18 @@ export const handler = async (
       loadWithDOM / 1000,
       "sec"
     );
+
     console.log("All Load for Regular2G --", all / 1000, "sec");
 
     // const content = await page.content();
     const title = await page.title();
+
     result = {
       // content,
-      title: `FO REAL CANT BELIEVE: ${title}`,
+      title: `${title}`,
       loadWithDOM,
       all,
+      profile,
     };
   } catch (error: unknown) {
     if (error instanceof Error) {
