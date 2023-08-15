@@ -14,6 +14,7 @@ export const handler = async (
   let result: any = null;
   let browser: Browser | null = null;
   try {
+    // Launch headless Chrome via
     browser = await chromium.puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
@@ -25,15 +26,16 @@ export const handler = async (
       throw new Error("Browser is null");
     }
 
+    // Create a Page context
     const page: Page = await browser.newPage();
+
+    // Create a Chrome Devtools Protocol session
     const client = await page.target().createCDPSession();
+
+    // Enable CDP domains
     await client.send("Network.enable");
     await client.send("Page.enable");
-
-    // enable the Profiler
     await client.send("Profiler.enable");
-
-    // enable the Debugger
     await client.send("Debugger.enable");
 
     await client.send("Page.setWebLifecycleState", {
@@ -59,6 +61,8 @@ export const handler = async (
 
     const profile = await client.send("Profiler.takePreciseCoverage");
 
+    // compress profile into smaller object
+
     const performanceTiming = JSON.parse(
       await page.evaluate(() => JSON.stringify(window.performance.timing))
     );
@@ -69,34 +73,38 @@ export const handler = async (
     const all =
       performanceTiming.loadEventEnd - performanceTiming.navigationStart;
 
-    console.log(
-      "User can see content for Regular2G ~",
-      loadWithDOM / 1000,
-      "sec"
-    );
-
-    console.log("All Load for Regular2G --", all / 1000, "sec");
-
-    // const content = await page.content();
     const title = await page.title();
 
     result = {
-      // content,
-      title: `${title}`,
+      title,
       loadWithDOM,
       all,
-      profile,
+      // profile,
+    };
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "text/plain" },
+      body: {
+        result,
+      },
     };
   } catch (error: unknown) {
     if (error instanceof Error) {
       console.error(error);
-      return callback(error);
+      return {
+        statusCode: 500,
+        headers: { "Content-Type": "text/plain" },
+        body: `Could not load ${event.url}: ${error.stack}\n`,
+      };
     }
   } finally {
     if (browser !== null) {
       await browser.close();
     }
   }
-
-  return callback(null, result);
+  return {
+    statusCode: 500,
+    headers: { "Content-Type": "text/plain" },
+    body: `Could not load ${event.url}\n`,
+  };
 };

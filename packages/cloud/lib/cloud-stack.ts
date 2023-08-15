@@ -1,14 +1,15 @@
-import { Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
 
 import * as cdk from "aws-cdk-lib";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as s3assets from "aws-cdk-lib/aws-s3-assets";
+import * as apigateway from "aws-cdk-lib/aws-apigateway";
+
 import * as path from "path";
 
-export class PocStack extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
+export class CloudStack extends cdk.Stack {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     const RaIamLambdaRole = new iam.Role(this, "RaLambdaRole", {
@@ -24,8 +25,6 @@ export class PocStack extends Stack {
 
     const bucketName = runtimeCode.bucket.bucketName;
 
-    // console.log("⚡️ bucketName: ", bucketName);
-
     const lambdaFunction = new lambda.Function(this, "RaLambda", {
       runtime: lambda.Runtime.NODEJS_14_X,
       handler: "index.handler",
@@ -33,6 +32,10 @@ export class PocStack extends Stack {
       role: RaIamLambdaRole,
       memorySize: 1024,
       timeout: cdk.Duration.seconds(30),
+    });
+
+    const apiGateway = new apigateway.LambdaRestApi(this, "RaRestApi", {
+      handler: lambdaFunction,
     });
   }
 }
