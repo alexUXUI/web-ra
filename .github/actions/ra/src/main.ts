@@ -5,7 +5,12 @@ import {wait} from './wait'
 
 import * as Octokit from '@octokit/rest'
 const githubToken = process.env.GITHUB_TOKEN
-const octokit = new Octokit.Octokit({auth: githubToken})
+const octokit = new Octokit.Octokit({
+  auth: githubToken,
+  request: {
+    fetch: axios
+  }
+})
 
 async function run(): Promise<void> {
   try {

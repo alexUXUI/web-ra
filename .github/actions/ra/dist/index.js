@@ -48,7 +48,12 @@ const axios_1 = __importDefault(__nccwpck_require__(8757));
 const wait_1 = __nccwpck_require__(5817);
 const Octokit = __importStar(__nccwpck_require__(5375));
 const githubToken = process.env.GITHUB_TOKEN;
-const octokit = new Octokit.Octokit({ auth: githubToken });
+const octokit = new Octokit.Octokit({
+    auth: githubToken,
+    request: {
+        fetch: axios_1.default
+    }
+});
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
