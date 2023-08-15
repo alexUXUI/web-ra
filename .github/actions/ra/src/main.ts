@@ -21,16 +21,9 @@ async function run(): Promise<void> {
     // make a GET request to this URL https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/
     // and set the response body as the output
 
-    axios
-      .get('https://api.example.com/data')
-      .then(response => {
-        console.log(response.data)
-        core.setOutput('response', response.data)
-        core.setSecret(response.data)
-      })
-      .catch(error => {
-        console.error('Error:', error)
-      })
+    const res = await axios.get('https://api.example.com/data')
+    core.setOutput('response', res.data)
+    core.setSecret(res.data)
 
     // post the body as a comment on the PR
     const commentBody = `Example PR comment`
