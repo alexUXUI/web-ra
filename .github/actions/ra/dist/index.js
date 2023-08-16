@@ -52,15 +52,13 @@ function run() {
             const res = yield axios_1.default.get('https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/');
             // core.info(JSON.stringify(res.data))
             const message = 'Sample PR comment';
+            const someVar = 'test';
             const context = github.context;
             if (context.payload.pull_request == null) {
                 core.setFailed('No pull request found.');
                 return;
             }
             const pull_request_number = context.payload.pull_request.number;
-            // core.info(`PR Number: ${pull_request_number}`)
-            // core.info(`Message: ${message}`)
-            // core.info(`Context: ${JSON.stringify(context)}`)
             const githubToken = process.env.TOKEN;
             core.info(`Github Token: ${githubToken}`);
             const octokit = new Octokit.Octokit({

@@ -13,6 +13,7 @@ async function run(): Promise<void> {
     // core.info(JSON.stringify(res.data))
 
     const message = 'Sample PR comment'
+    const someVar = 'test'
 
     const context = github.context
     if (context.payload.pull_request == null) {
@@ -21,10 +22,6 @@ async function run(): Promise<void> {
     }
 
     const pull_request_number = context.payload.pull_request.number
-
-    // core.info(`PR Number: ${pull_request_number}`)
-    // core.info(`Message: ${message}`)
-    // core.info(`Context: ${JSON.stringify(context)}`)
 
     const githubToken = process.env.TOKEN
 
