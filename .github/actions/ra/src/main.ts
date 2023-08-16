@@ -16,7 +16,6 @@ async function run(): Promise<void> {
     // core.info(JSON.stringify(res.data))
 
     const message = 'Sample PR comment'
-    const someVar = 'test'
 
     const context = github.context
     if (context.payload.pull_request == null) {
@@ -25,8 +24,6 @@ async function run(): Promise<void> {
     }
 
     const pull_request_number = context.payload.pull_request.number
-
-    // const githubToken = process.env.TOKEN
 
     core.info(`Github Token: ${githubToken}`)
 
@@ -37,8 +34,18 @@ async function run(): Promise<void> {
       }
     })
 
+    //owner
+    core.info(`Owner: ${context.repo.owner}`)
+    core.info(`Pull Request Number: ${pull_request_number}`)
+    core.info(`Message: ${message}`)
+    core.info(`Repo: ${context.repo}`)
+
+    const owner = context.repo.owner
+    const repo = context.repo.repo
+
     const new_comment = octokit.rest.issues.createComment({
-      ...context.repo,
+      owner: owner,
+      repo: repo,
       issue_number: pull_request_number,
       body: message
     })

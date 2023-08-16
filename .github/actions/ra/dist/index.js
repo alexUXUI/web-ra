@@ -54,14 +54,12 @@ function run() {
             const githubToken = core.getInput('token');
             // core.info(JSON.stringify(res.data))
             const message = 'Sample PR comment';
-            const someVar = 'test';
             const context = github.context;
             if (context.payload.pull_request == null) {
                 core.setFailed('No pull request found.');
                 return;
             }
             const pull_request_number = context.payload.pull_request.number;
-            // const githubToken = process.env.TOKEN
             core.info(`Github Token: ${githubToken}`);
             const octokit = new Octokit.Octokit({
                 auth: githubToken,
@@ -69,7 +67,19 @@ function run() {
                     fetch: axios_1.default
                 }
             });
-            const new_comment = octokit.rest.issues.createComment(Object.assign(Object.assign({}, context.repo), { issue_number: pull_request_number, body: message }));
+            //owner
+            core.info(`Owner: ${context.repo.owner}`);
+            core.info(`Pull Request Number: ${pull_request_number}`);
+            core.info(`Message: ${message}`);
+            core.info(`Repo: ${context.repo}`);
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const new_comment = octokit.rest.issues.createComment({
+                owner: owner,
+                repo: repo,
+                issue_number: pull_request_number,
+                body: message
+            });
             return;
         }
         catch (error) {
