@@ -1,9 +1,14 @@
 import chromium from "chrome-aws-lambda";
 import type { APIGatewayEvent, Context, Callback } from "aws-lambda";
-import type { Browser, Page } from "puppeteer-core";
+import type { Browser, Page, Protocol } from "puppeteer-core";
 
 interface RaEvent extends APIGatewayEvent {
   url: string;
+}
+
+interface RaResult {
+  title: string;
+  profile: Protocol.Profiler.TakePreciseCoverageResponse;
 }
 
 export const handler = async (
@@ -11,9 +16,10 @@ export const handler = async (
   context: Context,
   callback: Callback
 ) => {
-  let result: any = null;
+  let result: RaResult | null = null;
   let browser: Browser | null = null;
   try {
+    // Launch headless Chrome via
     browser = await chromium.puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
@@ -25,16 +31,15 @@ export const handler = async (
       throw new Error("Browser is null");
     }
 
+    // Create a Page context
     const page: Page = await browser.newPage();
+
+    // Create a Chrome Devtools Protocol session
     const client = await page.target().createCDPSession();
-    await client.send("Network.enable");
+
+    // Enable CDP domains
     await client.send("Page.enable");
-
-    // enable the Profiler
     await client.send("Profiler.enable");
-
-    // enable the Debugger
-    await client.send("Debugger.enable");
 
     await client.send("Page.setWebLifecycleState", {
       state: "active",
@@ -57,46 +62,42 @@ export const handler = async (
       console.log("Page loaded");
     });
 
-    const profile = await client.send("Profiler.takePreciseCoverage");
+    const profile: Protocol.Profiler.TakePreciseCoverageResponse =
+      await client.send("Profiler.takePreciseCoverage");
 
     const performanceTiming = JSON.parse(
       await page.evaluate(() => JSON.stringify(window.performance.timing))
     );
 
-    const loadWithDOM =
-      performanceTiming.domComplete - performanceTiming.navigationStart;
-
-    const all =
-      performanceTiming.loadEventEnd - performanceTiming.navigationStart;
-
-    console.log(
-      "User can see content for Regular2G ~",
-      loadWithDOM / 1000,
-      "sec"
-    );
-
-    console.log("All Load for Regular2G --", all / 1000, "sec");
-
-    // const content = await page.content();
     const title = await page.title();
 
     result = {
-      // content,
-      title: `${title}`,
-      loadWithDOM,
-      all,
+      title,
       profile,
+    };
+
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(result),
     };
   } catch (error: unknown) {
     if (error instanceof Error) {
       console.error(error);
-      return callback(error);
+      return {
+        statusCode: 500,
+        headers: { "Content-Type": "text/plain" },
+        body: `Could not load ${event.url}: ${error.stack}\n`,
+      };
     }
   } finally {
     if (browser !== null) {
       await browser.close();
     }
   }
-
-  return callback(null, result);
+  return {
+    statusCode: 500,
+    headers: { "Content-Type": "text/plain" },
+    body: `Could not load ${event.url}\n`,
+  };
 };
