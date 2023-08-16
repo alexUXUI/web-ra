@@ -46,24 +46,11 @@ async function run(): Promise<void> {
 
     core.info(JSON.stringify(repo))
 
-    await octokit.request(
-      `POST /repos/${owner}/${repo}/issues/${prNumber}/comments`,
-      {
-        owner,
-        repo,
-        issue_number: prNumber,
-        body: 'TEST COMMENT',
-        headers: {
-          'X-GitHub-Api-Version': '2022-11-28'
-        }
-      }
-    )
-
     await octokit.rest.issues.createComment({
       owner: owner,
       repo: repo,
       issue_number: prNumber,
-      body: message
+      body: JSON.stringify(res.data)
     })
 
     // await octokit.rest.pulls.createReview({
