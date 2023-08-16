@@ -45,19 +45,12 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const github = __importStar(__nccwpck_require__(5438));
 const core = __importStar(__nccwpck_require__(2186));
 const axios_1 = __importDefault(__nccwpck_require__(8757));
-const wait_1 = __nccwpck_require__(5817);
 const Octokit = __importStar(__nccwpck_require__(5375));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const ms = core.getInput('milliseconds');
-            core.debug(`Waiting ${ms} milliseconds ...`); // debug is only output if you set the secret `ACTIONS_STEP_DEBUG` to true
-            core.debug(new Date().toTimeString());
-            yield (0, wait_1.wait)(parseInt(ms, 10));
-            core.debug(new Date().toTimeString());
-            core.setOutput('time', new Date().toTimeString());
             const res = yield axios_1.default.get('https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/');
-            core.info(JSON.stringify(res.data));
+            // core.info(JSON.stringify(res.data))
             const message = 'Sample PR comment';
             const context = github.context;
             if (context.payload.pull_request == null) {
@@ -65,10 +58,11 @@ function run() {
                 return;
             }
             const pull_request_number = context.payload.pull_request.number;
-            core.info(`PR Number: ${pull_request_number}`);
-            core.info(`Message: ${message}`);
-            core.info(`Context: ${JSON.stringify(context)}`);
-            const githubToken = process.env.GITHUB_TOKEN;
+            // core.info(`PR Number: ${pull_request_number}`)
+            // core.info(`Message: ${message}`)
+            // core.info(`Context: ${JSON.stringify(context)}`)
+            const githubToken = process.env.TOKEN;
+            core.info(`Github Token: ${githubToken}`);
             const octokit = new Octokit.Octokit({
                 auth: githubToken,
                 request: {
@@ -104,37 +98,6 @@ run();
 //     return
 //   }
 // }
-
-
-/***/ }),
-
-/***/ 5817:
-/***/ (function(__unused_webpack_module, exports) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.wait = void 0;
-function wait(milliseconds) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return new Promise(resolve => {
-            if (isNaN(milliseconds)) {
-                throw new Error('milliseconds not a number');
-            }
-            setTimeout(() => resolve('done!'), milliseconds);
-        });
-    });
-}
-exports.wait = wait;
 
 
 /***/ }),

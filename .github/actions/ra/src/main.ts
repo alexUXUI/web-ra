@@ -26,7 +26,9 @@ async function run(): Promise<void> {
     // core.info(`Message: ${message}`)
     // core.info(`Context: ${JSON.stringify(context)}`)
 
-    const githubToken = process.env.GITHUB_TOKEN
+    const githubToken = process.env.TOKEN
+
+    core.info(`Github Token: ${githubToken}`)
 
     const octokit = new Octokit.Octokit({
       auth: githubToken,
