@@ -1,6 +1,7 @@
 import * as github from '@actions/github'
 import * as core from '@actions/core'
 import axios from 'axios'
+import fetch from 'node-fetch'
 
 import * as Octokit from '@octokit/rest'
 
@@ -28,7 +29,10 @@ async function run(): Promise<void> {
     core.info(`Github Token: ${githubToken}`)
 
     const octokit = new Octokit.Octokit({
-      auth: githubToken
+      auth: githubToken,
+      request: {
+        fetch: fetch
+      }
     })
 
     //owner
@@ -41,6 +45,19 @@ async function run(): Promise<void> {
     const repo = context.repo.repo
 
     core.info(JSON.stringify(repo))
+
+    await octokit.request(
+      `POST /repos/${owner}/${repo}/issues/${prNumber}/comments`,
+      {
+        owner,
+        repo,
+        issue_number: prNumber,
+        body: 'TEST COMMENT',
+        headers: {
+          'X-GitHub-Api-Version': '2022-11-28'
+        }
+      }
+    )
 
     await octokit.rest.issues.createComment({
       owner: owner,
