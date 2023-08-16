@@ -31,11 +31,12 @@ async function run(): Promise<void> {
     }
     const pull_request_number = context.payload.pull_request.number
 
-    core.info(`PR Number: ${pull_request_number}`)
-    core.info(`Message: ${message}`)
-    core.info(`Context: ${JSON.stringify(context)}`)
+    // core.info(`PR Number: ${pull_request_number}`)
+    // core.info(`Message: ${message}`)
+    // core.info(`Context: ${JSON.stringify(context)}`)
 
     const githubToken = process.env.GITHUB_TOKEN
+
     const octokit = new Octokit.Octokit({
       auth: githubToken,
       request: {
