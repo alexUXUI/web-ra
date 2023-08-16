@@ -70,10 +70,11 @@ function run() {
             //owner
             core.info(`Owner: ${context.repo.owner}`);
             core.info(`Pull Request Number: ${pull_request_number}`);
+            core.info(`Repo: ${context.repo.repo}`);
             core.info(`Message: ${message}`);
-            core.info(`Repo: ${context.repo}`);
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+            core.info(JSON.stringify(repo));
             const new_comment = octokit.rest.issues.createComment({
                 owner: owner,
                 repo: repo,
