@@ -1,26 +1,16 @@
 import * as github from '@actions/github'
 import * as core from '@actions/core'
 import axios from 'axios'
-import {wait} from './wait'
 
 import * as Octokit from '@octokit/rest'
 
 async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
-    core.debug(`Waiting ${ms} milliseconds ...`) // debug is only output if you set the secret `ACTIONS_STEP_DEBUG` to true
-
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
-
-    core.setOutput('time', new Date().toTimeString())
-
     const res = await axios.get(
       'https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/'
     )
 
-    core.info(JSON.stringify(res.data))
+    // core.info(JSON.stringify(res.data))
 
     const message = 'Sample PR comment'
 
@@ -29,6 +19,7 @@ async function run(): Promise<void> {
       core.setFailed('No pull request found.')
       return
     }
+
     const pull_request_number = context.payload.pull_request.number
 
     // core.info(`PR Number: ${pull_request_number}`)
