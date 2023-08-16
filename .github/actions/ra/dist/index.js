@@ -50,6 +50,8 @@ function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const res = yield axios_1.default.get('https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/');
+            // get the "token" input from the workflow file (required)
+            const githubToken = core.getInput('token');
             // core.info(JSON.stringify(res.data))
             const message = 'Sample PR comment';
             const someVar = 'test';
@@ -59,7 +61,7 @@ function run() {
                 return;
             }
             const pull_request_number = context.payload.pull_request.number;
-            const githubToken = process.env.TOKEN;
+            // const githubToken = process.env.TOKEN
             core.info(`Github Token: ${githubToken}`);
             const octokit = new Octokit.Octokit({
                 auth: githubToken,

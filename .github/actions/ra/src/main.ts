@@ -10,6 +10,9 @@ async function run(): Promise<void> {
       'https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/'
     )
 
+    // get the "token" input from the workflow file (required)
+    const githubToken = core.getInput('token')
+
     // core.info(JSON.stringify(res.data))
 
     const message = 'Sample PR comment'
@@ -23,7 +26,7 @@ async function run(): Promise<void> {
 
     const pull_request_number = context.payload.pull_request.number
 
-    const githubToken = process.env.TOKEN
+    // const githubToken = process.env.TOKEN
 
     core.info(`Github Token: ${githubToken}`)
 
