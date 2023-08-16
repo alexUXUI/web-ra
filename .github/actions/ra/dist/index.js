@@ -59,7 +59,7 @@ function run() {
                 core.setFailed('No pull request found.');
                 return;
             }
-            const pull_request_number = context.payload.pull_request.number;
+            const prNumber = context.payload.pull_request.number;
             core.info(`Github Token: ${githubToken}`);
             const octokit = new Octokit.Octokit({
                 auth: githubToken,
@@ -69,18 +69,26 @@ function run() {
             });
             //owner
             core.info(`Owner: ${context.repo.owner}`);
-            core.info(`Pull Request Number: ${pull_request_number}`);
+            core.info(`Pull Request Number: ${prNumber}`);
             core.info(`Repo: ${context.repo.repo}`);
             core.info(`Message: ${message}`);
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             core.info(JSON.stringify(repo));
-            const new_comment = octokit.rest.issues.createComment({
-                owner: owner,
-                repo: repo,
-                issue_number: pull_request_number,
-                body: message
+            // await octokit.rest.issues.createComment({
+            //   owner: owner,
+            //   repo: repo,
+            //   issue_number: prNumber,
+            //   body: message
+            // })
+            yield octokit.rest.pulls.createReview({
+                owner,
+                repo,
+                pull_number: prNumber,
+                event: 'COMMENT',
+                body: 'RA'
             });
+            // core.info(JSON.stringify(new_comment))
             return;
         }
         catch (error) {
