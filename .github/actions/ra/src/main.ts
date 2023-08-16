@@ -28,10 +28,7 @@ async function run(): Promise<void> {
     core.info(`Github Token: ${githubToken}`)
 
     const octokit = new Octokit.Octokit({
-      auth: githubToken,
-      request: {
-        fetch: axios
-      }
+      auth: githubToken
     })
 
     //owner
@@ -45,20 +42,20 @@ async function run(): Promise<void> {
 
     core.info(JSON.stringify(repo))
 
-    // await octokit.rest.issues.createComment({
-    //   owner: owner,
-    //   repo: repo,
-    //   issue_number: prNumber,
-    //   body: message
-    // })
-
-    await octokit.rest.pulls.createReview({
-      owner,
-      repo,
-      pull_number: prNumber,
-      event: 'COMMENT',
-      body: 'RA'
+    await octokit.rest.issues.createComment({
+      owner: owner,
+      repo: repo,
+      issue_number: prNumber,
+      body: message
     })
+
+    // await octokit.rest.pulls.createReview({
+    //   owner,
+    //   repo,
+    //   pull_number: prNumber,
+    //   event: 'COMMENT',
+    //   body: 'RA'
+    // })
 
     // core.info(JSON.stringify(new_comment))
 

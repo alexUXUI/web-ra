@@ -62,10 +62,7 @@ function run() {
             const prNumber = context.payload.pull_request.number;
             core.info(`Github Token: ${githubToken}`);
             const octokit = new Octokit.Octokit({
-                auth: githubToken,
-                request: {
-                    fetch: axios_1.default
-                }
+                auth: githubToken
             });
             //owner
             core.info(`Owner: ${context.repo.owner}`);
@@ -75,19 +72,19 @@ function run() {
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             core.info(JSON.stringify(repo));
-            // await octokit.rest.issues.createComment({
-            //   owner: owner,
-            //   repo: repo,
-            //   issue_number: prNumber,
-            //   body: message
-            // })
-            yield octokit.rest.pulls.createReview({
-                owner,
-                repo,
-                pull_number: prNumber,
-                event: 'COMMENT',
-                body: 'RA'
+            yield octokit.rest.issues.createComment({
+                owner: owner,
+                repo: repo,
+                issue_number: prNumber,
+                body: message
             });
+            // await octokit.rest.pulls.createReview({
+            //   owner,
+            //   repo,
+            //   pull_number: prNumber,
+            //   event: 'COMMENT',
+            //   body: 'RA'
+            // })
             // core.info(JSON.stringify(new_comment))
             return;
         }
