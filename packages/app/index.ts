@@ -10,6 +10,7 @@ interface RaResult {
   title: string;
   profile: Protocol.Profiler.TakePreciseCoverageResponse;
   tracing: any;
+  issues: any[];
 }
 
 export const handler = async (
@@ -55,6 +56,14 @@ export const handler = async (
       state: "active",
     });
 
+    const issues: any[] = [];
+
+    // collect audits
+    await client.on("Audits.issueAdded", (event: any) => {
+      issues.push(event);
+      console.log(event);
+    });
+
     await client.on("Page.lifecycleEvent", (event: any) => {
       console.log(event);
     });
@@ -84,17 +93,24 @@ export const handler = async (
     const title = await page.title();
 
     const report = await page.evaluate(() => {
-      const performanceEntries = JSON.parse(
-        JSON.stringify(window.performance.getEntriesByType("navigation"))
+      const allEntries = JSON.parse(
+        JSON.stringify(window.performance.getEntries())
       );
-      return performanceEntries;
+      return allEntries;
     });
+
+    console.log("report", report);
 
     result = {
       title,
       profile,
       tracing,
+      issues,
     };
+
+    console.log(title);
+    console.log("tracing", tracing);
+    console.log("issues", issues);
 
     return {
       statusCode: 200,
@@ -121,3 +137,5 @@ export const handler = async (
     body: `Could not load ${event.url}\n`,
   };
 };
+
+handler({} as any, {} as any, {} as any);
