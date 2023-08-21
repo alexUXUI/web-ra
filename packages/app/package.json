@@ -6,7 +6,7 @@
   "scripts": {
     "prebuild": "rm -rf dist",
     "build": "esbuild index.ts --target=node14 --format=cjs --platform=node --outfile=index.js",
-    "postbuild": "zip -r app.zip index.js node_modules && mkdir dist && cp app.zip dist/app.zip && rm app.zip && rm index.js",
+    "postbuild": "rm -rf ./node_modules/puppeteer && rm -rf ./node_modules/@puppeteer && zip -r app.zip index.js node_modules && mkdir dist && cp app.zip dist/app.zip && rm app.zip && rm index.js",
     "start": "nodemon --watch index.ts --exec npx ts-node index.ts"
   },
   "keywords": [],

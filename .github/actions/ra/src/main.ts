@@ -8,7 +8,7 @@ import * as Octokit from '@octokit/rest'
 async function run(): Promise<void> {
   try {
     const res = await axios.get(
-      'https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/'
+      'https://0xka4ile08.execute-api.us-east-1.amazonaws.com/prod/'
     )
 
     // get the "token" input from the workflow file (required)

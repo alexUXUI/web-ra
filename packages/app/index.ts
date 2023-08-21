@@ -49,7 +49,7 @@ export const handler = async (
     await client.send("Performance.enable");
 
     // enable tracing
-    await page.tracing.start({ path: "trace.json", screenshots: true });
+    // await page.tracing.start({ path: "trace.json", screenshots: true });
 
     await client.send("Page.setWebLifecycleState", {
       state: "active",
@@ -102,7 +102,7 @@ export const handler = async (
     });
 
     // check if page is tracing
-    await page.tracing.stop();
+    // await page.tracing.stop();
 
     const profile: Protocol.Profiler.TakePreciseCoverageResponse =
       await client.send("Profiler.takePreciseCoverage");
@@ -172,4 +172,4 @@ export const handler = async (
   };
 };
 
-handler({} as any, {} as any, {} as any);
+// handler({} as any, {} as any, {} as any);
