@@ -9,6 +9,7 @@ interface RaEvent extends APIGatewayEvent {
 interface RaResult {
   title: string;
   profile: Protocol.Profiler.TakePreciseCoverageResponse;
+  tracing: any;
 }
 
 export const handler = async (
@@ -41,6 +42,15 @@ export const handler = async (
     await client.send("Page.enable");
     await client.send("Profiler.enable");
 
+    // enable audits
+    await client.send("Audits.enable");
+
+    // enable performance
+    await client.send("Performance.enable");
+
+    // enable tracing
+    await client.send("Tracing.start");
+
     await client.send("Page.setWebLifecycleState", {
       state: "active",
     });
@@ -62,6 +72,8 @@ export const handler = async (
       console.log("Page loaded");
     });
 
+    const tracing = await client.send("Tracing.end");
+
     const profile: Protocol.Profiler.TakePreciseCoverageResponse =
       await client.send("Profiler.takePreciseCoverage");
 
@@ -71,9 +83,17 @@ export const handler = async (
 
     const title = await page.title();
 
+    const report = await page.evaluate(() => {
+      const performanceEntries = JSON.parse(
+        JSON.stringify(window.performance.getEntriesByType("navigation"))
+      );
+      return performanceEntries;
+    });
+
     result = {
       title,
       profile,
+      tracing,
     };
 
     return {
