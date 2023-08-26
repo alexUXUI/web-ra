@@ -172,4 +172,11 @@ export const handler = async (
   };
 };
 
-// handler({} as any, {} as any, {} as any);
+const runningInLambda = process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined;
+
+// // detect if running in AWS Lambda
+if (runningInLambda) {
+  console.log("Running in AWS Lambda");
+} else {
+  handler({} as any, {} as any, {} as any);
+}
