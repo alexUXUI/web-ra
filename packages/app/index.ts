@@ -9,6 +9,7 @@ interface RaEvent extends APIGatewayEvent {
 interface RaResult {
   title: string;
   profile: Protocol.Profiler.TakePreciseCoverageResponse;
+  issues: any[];
 }
 
 export const handler = async (
@@ -41,8 +42,25 @@ export const handler = async (
     await client.send("Page.enable");
     await client.send("Profiler.enable");
 
+    // enable audits
+    await client.send("Audits.enable");
+
+    // enable performance
+    await client.send("Performance.enable");
+
+    // enable tracing
+    // await page.tracing.start({ path: "trace.json", screenshots: true });
+
     await client.send("Page.setWebLifecycleState", {
       state: "active",
+    });
+
+    const issues: any[] = [];
+
+    // collect audits
+    await client.on("Audits.issueAdded", (event: any) => {
+      issues.push(event);
+      console.log(event);
     });
 
     await client.on("Page.lifecycleEvent", (event: any) => {
@@ -56,11 +74,35 @@ export const handler = async (
       detailed: true,
     });
 
+    await Promise.all([
+      page.coverage.startJSCoverage(),
+      page.coverage.startCSSCoverage(),
+    ]);
+    // Navigate to page
+
     await page.goto(url ?? "https://boggle.pages.dev/");
+
+    // Disable both JavaScript and CSS coverage
+    const [jsCoverage, cssCoverage] = await Promise.all([
+      page.coverage.stopJSCoverage(),
+      page.coverage.stopCSSCoverage(),
+    ]);
+    let totalBytes = 0;
+    let usedBytes = 0;
+    const coverage = [...jsCoverage, ...cssCoverage];
+    for (const entry of coverage) {
+      totalBytes += entry.text.length;
+      for (const range of entry.ranges)
+        usedBytes += range.end - range.start - 1;
+    }
+    console.log(`Bytes used: ${(usedBytes / totalBytes) * 100}%`);
 
     await client.on("Page.loadEventFired", () => {
       console.log("Page loaded");
     });
+
+    // check if page is tracing
+    // await page.tracing.stop();
 
     const profile: Protocol.Profiler.TakePreciseCoverageResponse =
       await client.send("Profiler.takePreciseCoverage");
@@ -71,10 +113,38 @@ export const handler = async (
 
     const title = await page.title();
 
+    const report = await page.evaluate(() => {
+      const allEntries = JSON.parse(
+        JSON.stringify(window.performance.getEntries())
+      );
+      return allEntries;
+    });
+
+    // console.log("report", report);
+
     result = {
       title,
       profile,
+      issues,
     };
+
+    // console.log(title);
+    // console.log("tracing", tracing);
+    // console.log("issues", issues);
+    // console.log("coverage", coverage);
+
+    coverage.forEach((entry) => {
+      console.log(entry.url);
+      entry.ranges.forEach((range) => {
+        console.log(
+          `  ${range.start}: ${range.end - range.start - 1} bytes used`
+        );
+        // log percent of used bytes
+        console.log(
+          `  ${(100 * (range.end - range.start - 1)) / entry.text.length}%`
+        );
+      });
+    });
 
     return {
       statusCode: 200,
@@ -101,3 +171,12 @@ export const handler = async (
     body: `Could not load ${event.url}\n`,
   };
 };
+
+const runningInLambda = process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined;
+
+// // detect if running in AWS Lambda
+if (runningInLambda) {
+  console.log("Running in AWS Lambda");
+} else {
+  handler({} as any, {} as any, {} as any);
+}

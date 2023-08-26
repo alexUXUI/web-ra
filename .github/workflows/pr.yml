@@ -23,4 +23,4 @@ jobs:
       - name: Custom
         uses: ./.github/actions/ra
         with:
-          milliseconds: 1000
+          token: ${{ secrets.TOKEN }}
