@@ -3,6 +3,7 @@ import type { APIGatewayEvent, Context, Callback } from "aws-lambda";
 import type { Browser, Page, Protocol } from "puppeteer-core";
 import chromium from "chrome-aws-lambda";
 import fs from "fs";
+import { S3 } from 'aws-sdk';
 
 interface AnalysisEvent extends APIGatewayEvent {
   url: string;
@@ -11,6 +12,7 @@ interface AnalysisEvent extends APIGatewayEvent {
 interface AnalysisResult {
   title?: string;
   profile?: Protocol.Profiler.StopResponse;
+  file?: string;
 }
 
 type AnalysisEntry = {
@@ -26,6 +28,7 @@ const ERROR = {
   headers: { "Content-Type": "text/plain" },
 }
 
+
 let RUNS = 0;
 let RUN_DATA: AnalysisEntry[] = [];
 
@@ -38,13 +41,14 @@ export const handler = async (
 
   try {
 
-    await taskRunner()
-
+    await runProfiler()
     const { title, profile } = await medianExecutionTime(RUN_DATA);
+    const file = await saveProfile(profile);
 
     result = {
       title,
       profile,
+      file
     };
 
     return {
@@ -60,16 +64,41 @@ export const handler = async (
         body: `Could not load ${event.url}: ${error.stack}`,
       };
     }
-  } finally {
-
   }
+
   return {
     ...ERROR,
     body: `Could not load ${event.url}\n`,
   };
 };
 
-async function taskRunner (url: string = "https://boggle.pages.dev/") {
+async function getPreviousProfile() {
+  const s3 = new S3();
+  const bucketName = process.env.BUCKET_NAME!;
+
+  const s3Contents = await s3.listObjectsV2({ Bucket: bucketName }).promise();
+  
+  const latestFile = s3Contents.Contents?.sort((a, b) => {
+    if (a.LastModified! < b.LastModified!) {
+      return -1;
+    }
+    if (a.LastModified! > b.LastModified!) {
+      return 1;
+    }
+    return 0;
+  })[0];
+
+  const file = await s3.getObject({
+    Bucket: bucketName,
+    Key: latestFile?.Key!,
+  }).promise();
+
+  const profile = JSON.parse(file.Body?.toString()!);
+
+  return profile;
+}
+
+async function runProfiler (url: string = "https://boggle.pages.dev/") {
   while (RUNS < 3) {
     const { profile, title } = await profiler(url);
     const flamegraph = convertToMergedFlameGraph(profile.profile as any);
@@ -112,8 +141,6 @@ async function profiler(url: string) {
     await browser.close();
   }
 
-   await saveProfile(profile);
-
   return {
     title,
     profile,
@@ -121,18 +148,49 @@ async function profiler(url: string) {
 } 
 
 async function saveProfile(data: Protocol.Profiler.StopResponse) {
-  if (!IS_LAMBDA_ENV) {
-    const date = Date.now();
-    const filename = `profile-${date}.cpuprofile`;
-    const cpuProf = JSON.stringify(data.profile, null, 2);
-    await fs.writeFileSync(filename, cpuProf)
+  let fileName = '';
 
-    return {
-      filename,
+  try {
+    if (!IS_LAMBDA_ENV) {
+      const date = Date.now();
+      fileName = `profile-${date}.cpuprofile`;
+      const cpuProf = JSON.stringify(data.profile, null, 2);
+      await fs.writeFileSync(fileName, cpuProf)
+  
+      return fileName
+    } else {
+      const s3 = new S3();
+  
+      // Convert the data to JSON format
+      const jsonData = JSON.stringify(data.profile);
+  
+      // Specify the S3 bucket name from the environment variables
+      const bucketName = process.env.BUCKET_NAME!;
+  
+      fileName = `output-${Date.now()}.json`;
+  
+      // Prepare the parameters for the S3 putObject operation
+      const params = {
+        Bucket: bucketName,
+        Key: fileName,
+        Body: jsonData,
+      };
+  
+      // Upload the data to the S3 bucket
+      const response = await s3.putObject(params).promise();
+      console.log('S3 response: ');
+      console.log(response);
+
+      // get the signed url
+      const signedUrl = await s3.getSignedUrlPromise('getObject', {
+        Bucket: bucketName,
+        Key: fileName,
+      });
+  
+      return signedUrl ?? 'could not get signed url'
     }
-  } 
-  return {
-    filename: 'did not save profile'
+  } catch (e) {
+    return 'did not save profile'
   }
 }
 

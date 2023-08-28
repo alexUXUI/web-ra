@@ -13,7 +13,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-cdk/aws-s3": "^1.204.0",
     "aws-lambda": "^1.0.7",
+    "aws-sdk": "^3.0.0",
     "chrome-aws-lambda": "^10.1.0",
     "cpuprofile-to-flamegraph": "^1.0.0",
     "d3-flame-graph": "^4.1.3",
