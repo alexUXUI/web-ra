@@ -1,75 +1,46 @@
-import chromium from "chrome-aws-lambda";
+import { convertToMergedFlameGraph, type FlameGraphNode } from "cpuprofile-to-flamegraph";
 import type { APIGatewayEvent, Context, Callback } from "aws-lambda";
 import type { Browser, Page, Protocol } from "puppeteer-core";
+import chromium from "chrome-aws-lambda";
+import fs from "fs";
 
-interface RaEvent extends APIGatewayEvent {
+interface AnalysisEvent extends APIGatewayEvent {
   url: string;
 }
 
-interface RaResult {
-  title: string;
-  // profile: Protocol.Profiler.TakePreciseCoverageResponse | any;
-  profile: Protocol.Profiler.Profile | any;
+interface AnalysisResult {
+  title?: string;
+  profile?: Protocol.Profiler.StopResponse;
 }
 
+type AnalysisEntry = {
+  title: string,
+  profile: Protocol.Profiler.StopResponse,
+  flamegraph: FlameGraphNode
+}
+
+const IS_LAMBDA_ENV = process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined;
+
+const ERROR = {
+  statusCode: 500,
+  headers: { "Content-Type": "text/plain" },
+}
+
+let RUNS = 0;
+let RUN_DATA: AnalysisEntry[] = [];
+
 export const handler = async (
-  event: RaEvent,
+  event: AnalysisEvent,
   context: Context,
   callback: Callback
 ) => {
-  let result: RaResult | null = null;
-  let browser: Browser | null = null;
+  let result: AnalysisResult | null = null;
+
   try {
-    // Launch headless Chrome via
-    browser = await chromium.puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath,
-      ignoreHTTPSErrors: true,
-    });
 
-    if (browser === null) {
-      throw new Error("Browser is null");
-    }
+    await taskRunner()
 
-    // Create a Page context
-    const page: Page = await browser.newPage();
-    const title = await page.title();
-
-    // Create a Chrome Devtools Protocol session
-    const client = await page.target().createCDPSession();
-
-    // Enable CDP domains
-    await client.send("Page.enable");
-    await client.send("Profiler.enable");
-    await client.send("Audits.enable");
-    await client.send("Performance.enable");
-
-    // await client.send("Profiler.startPreciseCoverage", {
-    //   callCount: true,
-    //   detailed: true,
-    // });
-
-    await client.send("Profiler.start");
-
-    const url = event?.url ?? "https://boggle.pages.dev/";
-
-    await page.goto(url);
-
-    // const profile: Protocol.Profiler.TakePreciseCoverageResponse =
-    //   await client.send("Profiler.takePreciseCoverage");
-
-    // console.log(profile);
-
-    const profile: Protocol.Profiler.StopResponse = await client.send(
-      "Profiler.stop"
-    );
-
-    // console.log(profile);
-
-    // profile.profile.nodes.forEach((node) => {
-    //   console.log(node);
-    // });
+    const { title, profile } = await medianExecutionTime(RUN_DATA);
 
     result = {
       title,
@@ -85,32 +56,108 @@ export const handler = async (
     if (error instanceof Error) {
       console.error(error);
       return {
-        statusCode: 500,
-        headers: { "Content-Type": "text/plain" },
-        body: `Could not load ${event.url}: ${error.stack}\n`,
+        ...ERROR,
+        body: `Could not load ${event.url}: ${error.stack}`,
       };
     }
   } finally {
-    if (browser !== null) {
-      await browser.close();
-    }
+
   }
   return {
-    statusCode: 500,
-    headers: { "Content-Type": "text/plain" },
+    ...ERROR,
     body: `Could not load ${event.url}\n`,
   };
 };
 
-const runningInLambda = process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined;
+async function taskRunner (url: string = "https://boggle.pages.dev/") {
+  while (RUNS < 3) {
+    const { profile, title } = await profiler(url);
+    const flamegraph = convertToMergedFlameGraph(profile.profile as any);
 
-if (runningInLambda) {
+    RUN_DATA.push({ title, profile, flamegraph });
+    console.log("execution time", flamegraph.executionTime);
+    RUNS++;
+  }
+}
+
+async function profiler(url: string) {
+  let browser: Browser | null = null;
+
+  browser = await chromium.puppeteer.launch({
+    headless: "new" as any, // https://developer.chrome.com/articles/new-headless/
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath,
+    ignoreHTTPSErrors: true,
+  });
+
+  if (browser === null) {
+    throw new Error("Browser is null");
+  }
+
+  const page: Page = await browser.newPage();
+  const title = await page.title();
+  const client = await page.target().createCDPSession();
+
+  await client.send("Page.enable");
+  await client.send("Profiler.enable");
+  await client.send("Profiler.start");
+  await page.goto(url);
+
+  const profile: Protocol.Profiler.StopResponse = await client.send(
+    "Profiler.stop"
+  );
+
+  if (browser !== null) {
+    await browser.close();
+  }
+
+   await saveProfile(profile);
+
+  return {
+    title,
+    profile,
+  };
+} 
+
+async function saveProfile(data: Protocol.Profiler.StopResponse) {
+  if (!IS_LAMBDA_ENV) {
+    const date = Date.now();
+    const filename = `profile-${date}.cpuprofile`;
+    const cpuProf = JSON.stringify(data.profile, null, 2);
+    await fs.writeFileSync(filename, cpuProf)
+
+    return {
+      filename,
+    }
+  } 
+  return {
+    filename: 'did not save profile'
+  }
+}
+
+const medianExecutionTime = (data: AnalysisEntry[]) => {
+  const sorted = data.sort((a, b) => {
+    if (a.flamegraph.executionTime < b.flamegraph.executionTime) {
+      return -1;
+    }
+    if (a.flamegraph.executionTime > b.flamegraph.executionTime) {
+      return 1;
+    }
+    return 0;
+  });
+
+  const medianIndex = Math.floor(sorted.length / 2);
+  return sorted[medianIndex];
+}
+
+if (IS_LAMBDA_ENV) {
   console.log("Running in AWS Lambda");
 } else {
   handler(
     {
-      url: "http://localhost:3000",
-    } as RaEvent,
+      // url: "http://localhost:3000",
+    } as AnalysisEvent,
     {} as Context,
     {} as Callback
   );
