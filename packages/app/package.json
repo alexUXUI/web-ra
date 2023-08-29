@@ -6,15 +6,19 @@
   "scripts": {
     "prebuild": "rm -rf dist",
     "build": "esbuild index.ts --target=node14 --format=cjs --platform=node --outfile=index.js",
-    "postbuild": "rm -rf ./node_modules/puppeteer && rm -rf ./node_modules/@puppeteer && zip -r app.zip index.js node_modules && mkdir dist && cp app.zip dist/app.zip && rm app.zip && rm index.js",
+    "postbuild": "rm -rf ./node_modules/puppeteer && rm -rf ./node_modules/@puppeteer && zip -r app.zip index.js node_modules && mkdir dist && cp app.zip dist/app.zip && rm app.zip && rm index.js && npm i",
     "start": "nodemon --watch index.ts --exec npx ts-node index.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-cdk/aws-s3": "^1.204.0",
     "aws-lambda": "^1.0.7",
+    "aws-sdk": "^2.1445.0",
     "chrome-aws-lambda": "^10.1.0",
+    "cpuprofile-to-flamegraph": "^1.0.0",
+    "d3-flame-graph": "^4.1.3",
     "puppeteer-core": "^10.4.0"
   },
   "devDependencies": {

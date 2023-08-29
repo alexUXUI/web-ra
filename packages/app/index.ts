@@ -1,150 +1,69 @@
-import chromium from "chrome-aws-lambda";
+import { convertToMergedFlameGraph, Profile, type FlameGraphNode } from "cpuprofile-to-flamegraph";
 import type { APIGatewayEvent, Context, Callback } from "aws-lambda";
 import type { Browser, Page, Protocol } from "puppeteer-core";
+import chromium from "chrome-aws-lambda";
+import fs from "fs";
+import { S3 } from 'aws-sdk';
 
-interface RaEvent extends APIGatewayEvent {
+interface AnalysisEvent extends APIGatewayEvent {
   url: string;
 }
 
-interface RaResult {
-  title: string;
-  profile: Protocol.Profiler.TakePreciseCoverageResponse;
-  issues: any[];
+interface AnalysisResult {
+  title?: string;
+  diff?: any;
+  currentprofile?: Protocol.Profiler.Profile;
+  previousProfile?: Protocol.Profiler.Profile;
 }
 
+type AnalysisEntry = {
+  title: string,
+  profile: Protocol.Profiler.Profile,
+  flamegraph: FlameGraphNode
+}
+
+const IS_LAMBDA_ENV = process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined;
+
+const ERROR = {
+  statusCode: 500,
+  headers: { "Content-Type": "text/plain" },
+}
+
+let RUNS = 0;
+let RUN_DATA: AnalysisEntry[] = [];
+
 export const handler = async (
-  event: RaEvent,
+  event: AnalysisEvent,
   context: Context,
   callback: Callback
 ) => {
-  let result: RaResult | null = null;
-  let browser: Browser | null = null;
+  let result: AnalysisResult | null = null;
+
+  RUNS = 0;
+  RUN_DATA = [];
+
   try {
-    // Launch headless Chrome via
-    browser = await chromium.puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath,
-      ignoreHTTPSErrors: true,
-    });
 
-    if (browser === null) {
-      throw new Error("Browser is null");
+    await runProfiler(event.url)
+    const { title, profile } = await medianExecutionTime(RUN_DATA);
+    await saveProfile(profile);
+    const previousProfile = await getPreviousProfile();
+
+    let diff = null;
+    try {
+      const functionSliceDiff = compareProfiles(previousProfile, profile);
+      diff = Array.from(functionSliceDiff);
+      console.log('diff', diff);
+    } catch (e) {
+      console.error(e);
     }
-
-    // Create a Page context
-    const page: Page = await browser.newPage();
-
-    // Create a Chrome Devtools Protocol session
-    const client = await page.target().createCDPSession();
-
-    // Enable CDP domains
-    await client.send("Page.enable");
-    await client.send("Profiler.enable");
-
-    // enable audits
-    await client.send("Audits.enable");
-
-    // enable performance
-    await client.send("Performance.enable");
-
-    // enable tracing
-    // await page.tracing.start({ path: "trace.json", screenshots: true });
-
-    await client.send("Page.setWebLifecycleState", {
-      state: "active",
-    });
-
-    const issues: any[] = [];
-
-    // collect audits
-    await client.on("Audits.issueAdded", (event: any) => {
-      issues.push(event);
-      console.log(event);
-    });
-
-    await client.on("Page.lifecycleEvent", (event: any) => {
-      console.log(event);
-    });
-
-    const url = event.url;
-
-    await client.send("Profiler.startPreciseCoverage", {
-      callCount: true,
-      detailed: true,
-    });
-
-    await Promise.all([
-      page.coverage.startJSCoverage(),
-      page.coverage.startCSSCoverage(),
-    ]);
-    // Navigate to page
-
-    await page.goto(url ?? "https://boggle.pages.dev/");
-
-    // Disable both JavaScript and CSS coverage
-    const [jsCoverage, cssCoverage] = await Promise.all([
-      page.coverage.stopJSCoverage(),
-      page.coverage.stopCSSCoverage(),
-    ]);
-    let totalBytes = 0;
-    let usedBytes = 0;
-    const coverage = [...jsCoverage, ...cssCoverage];
-    for (const entry of coverage) {
-      totalBytes += entry.text.length;
-      for (const range of entry.ranges)
-        usedBytes += range.end - range.start - 1;
-    }
-    console.log(`Bytes used: ${(usedBytes / totalBytes) * 100}%`);
-
-    await client.on("Page.loadEventFired", () => {
-      console.log("Page loaded");
-    });
-
-    // check if page is tracing
-    // await page.tracing.stop();
-
-    const profile: Protocol.Profiler.TakePreciseCoverageResponse =
-      await client.send("Profiler.takePreciseCoverage");
-
-    const performanceTiming = JSON.parse(
-      await page.evaluate(() => JSON.stringify(window.performance.timing))
-    );
-
-    const title = await page.title();
-
-    const report = await page.evaluate(() => {
-      const allEntries = JSON.parse(
-        JSON.stringify(window.performance.getEntries())
-      );
-      return allEntries;
-    });
-
-    // console.log("report", report);
 
     result = {
       title,
-      profile,
-      issues,
+      diff,
+      currentprofile: profile,
+      previousProfile,
     };
-
-    // console.log(title);
-    // console.log("tracing", tracing);
-    // console.log("issues", issues);
-    // console.log("coverage", coverage);
-
-    coverage.forEach((entry) => {
-      console.log(entry.url);
-      entry.ranges.forEach((range) => {
-        console.log(
-          `  ${range.start}: ${range.end - range.start - 1} bytes used`
-        );
-        // log percent of used bytes
-        console.log(
-          `  ${(100 * (range.end - range.start - 1)) / entry.text.length}%`
-        );
-      });
-    });
 
     return {
       statusCode: 200,
@@ -155,28 +74,253 @@ export const handler = async (
     if (error instanceof Error) {
       console.error(error);
       return {
-        statusCode: 500,
-        headers: { "Content-Type": "text/plain" },
-        body: `Could not load ${event.url}: ${error.stack}\n`,
+        ...ERROR,
+        body: `Could not load ${event.url}: ${error.stack}`,
       };
     }
-  } finally {
-    if (browser !== null) {
-      await browser.close();
-    }
   }
+
   return {
-    statusCode: 500,
-    headers: { "Content-Type": "text/plain" },
+    ...ERROR,
     body: `Could not load ${event.url}\n`,
   };
 };
 
-const runningInLambda = process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined;
+async function runProfiler (url: string = "https://boggle.pages.dev/") {
+  while (RUNS < 3) {
+    const { profile, title } = await profiler(url);
+    const flamegraph = convertToMergedFlameGraph(profile as Profile);
 
-// // detect if running in AWS Lambda
-if (runningInLambda) {
+    RUN_DATA.push({ title, profile, flamegraph });
+    console.log("execution time", flamegraph.executionTime);
+    RUNS++;
+  }
+}
+
+async function profiler(url: string) {
+  let browser: Browser | null = null;
+
+  browser = await chromium.puppeteer.launch({
+    headless: "new" as any, // https://developer.chrome.com/articles/new-headless/
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath,
+    ignoreHTTPSErrors: true,
+  });
+
+  if (browser === null) {
+    throw new Error("Browser is null");
+  }
+
+  const page: Page = await browser.newPage();
+  const title = await page.title();
+  const client = await page.target().createCDPSession();
+
+  await client.send("Page.enable");
+  await client.send("Profiler.enable");
+  await client.send("Profiler.start");
+  await page.goto(url);
+
+  const profile: Protocol.Profiler.StopResponse = await client.send(
+    "Profiler.stop"
+  );
+
+  // close the client
+  await client.detach();
+
+  if (browser !== null) {
+    await browser.close();
+  }
+
+  return {
+    title,
+    profile: profile.profile,
+  };
+} 
+
+const medianExecutionTime = (data: AnalysisEntry[]) => {
+  const sorted = data.sort((a, b) => {
+    if (a.flamegraph.executionTime < b.flamegraph.executionTime) {
+      return -1;
+    }
+    if (a.flamegraph.executionTime > b.flamegraph.executionTime) {
+      return 1;
+    }
+    return 0;
+  });
+
+  const medianIndex = Math.floor(sorted.length / 2);
+  return sorted[medianIndex];
+}
+
+async function saveProfile(data: Protocol.Profiler.Profile) {
+  let fileName = '';
+
+  try {
+    if (!IS_LAMBDA_ENV) {
+      const date = Date.now();
+      fileName = `profile-${date}.cpuprofile`;
+      const cpuProf = JSON.stringify(data, null, 2);
+      await fs.writeFileSync(fileName, cpuProf)
+  
+      return fileName
+    } else {
+      const s3 = new S3();
+  
+      // Convert the data to JSON format
+      const jsonData = JSON.stringify(data);
+  
+      // Specify the S3 bucket name from the environment variables
+      const bucketName = process.env.BUCKET_NAME!;
+  
+      fileName = `output-${Date.now()}.json`;
+  
+      // Prepare the parameters for the S3 putObject operation
+      const params = {
+        Bucket: bucketName,
+        Key: fileName,
+        Body: jsonData,
+      };
+  
+      // Upload the data to the S3 bucket
+      const response = await s3.putObject(params).promise();
+
+      // get the signed url
+      const signedUrl = await s3.getSignedUrlPromise('getObject', {
+        Bucket: bucketName,
+        Key: fileName,
+      });
+  
+      return signedUrl ?? 'could not get signed url'
+    }
+  } catch (e) {
+    return 'did not save profile'
+  }
+}
+
+async function getPreviousProfile() {
+  if (IS_LAMBDA_ENV) {
+    try {
+      const s3 = new S3();
+      const bucketName = process.env.BUCKET_NAME!;
+  
+      const s3Contents = await s3.listObjectsV2({ Bucket: bucketName }).promise();
+      
+      const latestFile = s3Contents.Contents?.sort((a, b) => {
+        if (a.LastModified! < b.LastModified!) {
+          return -1;
+        }
+        if (a.LastModified! > b.LastModified!) {
+          return 1;
+        }
+        return 0;
+      })[0];
+  
+      const file = await s3.getObject({
+        Bucket: bucketName,
+        Key: latestFile?.Key!,
+      }).promise();
+
+      const profile = JSON.parse(file.Body?.toString()!);
+
+      return profile;
+    } catch (e) {
+      console.error(e);
+      return 'error getting previous profile';
+    }
+  } else {
+    // look in the current directory for the latest profile
+    try {
+      const files = fs.readdirSync('./');
+      
+      const fileNamePattern = /profile-\d+\.cpuprofile/;
+      const latestCpuProfile = files.filter((file) => fileNamePattern.test(file)).sort((a, b) => {
+        const neamWithoutPrefix = (fileName: string) => fileName.replace('profile-', '');
+        const nameWithoutSuffix = (fileName: string) => fileName.replace('.cpuprofile', '');
+        const dateA = parseInt(nameWithoutSuffix(neamWithoutPrefix(a)));
+        const dateB = parseInt(nameWithoutSuffix(neamWithoutPrefix(b)));
+
+        if (dateA < dateB) {
+          return -1;
+        }
+        if (dateA > dateB) {
+          return 1;
+        }
+        return 0;
+      })[0];
+
+      const latestFile = `./${latestCpuProfile}`;
+
+      const file = fs.readFileSync(latestFile);
+      const profile = JSON.parse(file.toString());
+
+
+      return profile;
+    } catch (e) {
+      console.error(e);
+      return 'error getting previous profile';
+    }
+  }
+}
+
+const functionSliceDeltas = new Set();
+let depth = 0;
+
+function compareFlamegraphNodes(previous: FlameGraphNode, current: FlameGraphNode): any {
+  for (let i = 0; i < previous.children.length; i++) {
+    const previousChild = previous.children[i];
+    const currentChild = current.children[i];
+
+    if (!previousChild || !currentChild) {
+      continue;
+    }
+
+    const isSameName = previousChild.name === currentChild.name;
+    const sliceId = `${previousChild.name}-${depth}`;
+
+    if (isSameName) {
+      // compare the execution time
+      const executionTimeDelta = previousChild.executionTime - currentChild.executionTime;
+      functionSliceDeltas.add({ sliceId, executionTimeDelta });
+    }
+
+    const childDiff: any = compareFlamegraphNodes(previousChild, currentChild);
+  }
+
+  depth++;
+
+  return functionSliceDeltas;
+}
+
+function compareProfiles(previous: Protocol.Profiler.Profile, current: Protocol.Profiler.Profile) {
+  if (!previous) {
+    console.log('no previous to compare');
+    return 'no previous to compare';
+  }
+
+  if (!current) {
+    console.log('no current to compare');
+    return 'no current to compare';
+  }
+
+  // convert the profiles to flamegraphs
+  const previousFlamegraph = convertToMergedFlameGraph(previous as Profile);
+  const currentFlamegraph = convertToMergedFlameGraph(current as Profile);
+
+  // compare each of the flamegraph nodes to see what changed
+  const diff = compareFlamegraphNodes(previousFlamegraph, currentFlamegraph);
+  
+  return diff;
+}
+
+if (IS_LAMBDA_ENV) {
   console.log("Running in AWS Lambda");
 } else {
-  handler({} as any, {} as any, {} as any);
+  handler(
+    {
+      // url: "http://localhost:3000",
+    } as AnalysisEvent,
+    {} as Context,
+    {} as Callback
+  );
 }
