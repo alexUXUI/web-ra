@@ -5,6 +5,8 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as s3assets from "aws-cdk-lib/aws-s3-assets";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import * as logs from "aws-cdk-lib/aws-logs";
+
 import {
   Bucket,
   BucketAccessControl,
@@ -20,6 +22,7 @@ export class CloudStack extends cdk.Stack {
 
     const bucket = new Bucket(this, "ra-results", {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+      // https://github.com/aws/aws-cdk/issues/25358
       blockPublicAccess: BlockPublicAccess.BLOCK_ACLS,
       accessControl: BucketAccessControl.BUCKET_OWNER_FULL_CONTROL,
       objectOwnership: ObjectOwnership.OBJECT_WRITER,
@@ -48,11 +51,10 @@ export class CloudStack extends cdk.Stack {
       environment: {
         BUCKET_NAME: bucket.bucketName,
       },
+      logRetention: logs.RetentionDays.ONE_WEEK,
     });
 
     bucket.grantReadWrite(lambdaFunction);
-
-    // make the bucket objects public
     bucket.grantPublicAccess("*");
 
     const apiGateway = new apigateway.LambdaRestApi(this, "RaRestApi", {
